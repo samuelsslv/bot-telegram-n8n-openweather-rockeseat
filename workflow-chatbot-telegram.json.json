@@ -1,0 +1,262 @@
+{
+  "name": "Rockeseat Projeto",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.queue }}"
+            },
+            {
+              "name": "appid",
+              "value": "63b0fad1f525a3bb9f3beffff4ef8fb1"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "lang",
+              "value": "pt_br"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -208,
+        -352
+      ],
+      "id": "b9544fec-29a5-4ccf-951d-8fa7d0e03f31",
+      "name": "HTTP Request",
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const iconMap = {\n  '01d': '☀️', '01n': '🌙',\n  '02d': '⛅', '02n': '☁️',\n  '03d': '☁️', '03n': '☁️',\n  '04d': '☁️', '04n': '☁️',\n  '09d': '🌦️', '09n': '🌧️',\n  '10d': '🌦️', '10n': '🌧️',\n  '11d': '⛈️', '11n': '⛈️',\n  '13d': '❄️', '13n': '❄️',\n  '50d': '🌫️', '50n': '🌫️'\n};\n\n// Pegamos o ícone do item atual\nconst iconCode = $input.first().json.weather[0].icon\n\n// Criamos um novo campo 'emoji' para não sobrescrever o original (boa prática)\n// Assim você mantém o ID do ícone se precisar dele depois\n$input.first().json.weather[0].emoji_clima = iconMap[iconCode] || '🌡️';\n\nreturn $input;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -480
+      ],
+      "id": "27be756c-0cda-4113-aabf-8d701cbdbd97",
+      "name": "Adiciona Emoji"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Monitora Msgs do Bot').item.json.message.chat.id }}",
+        "text": "={{ $json.item.json.weather[0].emoji_clima }} A temperatura em {{ $('HTTP Request').item.json.name }} é de {{ $('HTTP Request').item.json.main.temp.round() }}°C",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        -448
+      ],
+      "id": "2fb0fe4f-1145-44b3-b92b-66265a713b47",
+      "name": "Responde com os Dados",
+      "webhookId": "89637022-99fb-4436-a1f0-a58b4edc4810",
+      "credentials": {
+        "telegramApi": {
+          "id": "Xdmd6OUsJarLgwH3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Monitora Msgs do Bot').item.json.message.chat.id }}",
+        "text": "= ❌ Cidade não encontrada. Use o formato Cidade,UF (ex.: São Paulo,SP).",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        -288
+      ],
+      "id": "f8e7e87c-d834-4114-85e4-2e273e5137e9",
+      "name": "Retorna Falha na Consulta",
+      "webhookId": "89637022-99fb-4436-a1f0-a58b4edc4810",
+      "credentials": {
+        "telegramApi": {
+          "id": "Xdmd6OUsJarLgwH3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fc8c280e-ab40-4e0f-99f5-c6ed6991cac9",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -32,
+        -352
+      ],
+      "id": "1685f663-9862-49de-a361-b9184cfdd5c6",
+      "name": "Checa Resultado da Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        -320
+      ],
+      "id": "70b8488d-5741-4d8b-b629-b15604e2bd93",
+      "name": "Monitora Msgs do Bot",
+      "webhookId": "c27a2993-47ec-4847-b43a-20e93d776e91",
+      "credentials": {
+        "telegramApi": {
+          "id": "Xdmd6OUsJarLgwH3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"queue\": \"{{ $json.message.text.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, '') }},BR\"\n}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        -320
+      ],
+      "id": "4ab079de-6d2f-4309-a4ae-4c34211e8d74",
+      "name": "Edit Fields1",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Checa Resultado da Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adiciona Emoji": {
+      "main": [
+        [
+          {
+            "node": "Responde com os Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checa Resultado da Request": {
+      "main": [
+        [
+          {
+            "node": "Adiciona Emoji",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retorna Falha na Consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monitora Msgs do Bot": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "86257b12-0b09-4b51-aaff-9d05128173b4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e6eec74ffddf78b78e3d4349917dc6327a273be4228b25b79c067405b64decb2"
+  },
+  "id": "qfPaJE1IwRjDDdzb",
+  "tags": [
+    {
+      "createdAt": "2026-02-17T05:04:36.743Z",
+      "updatedAt": "2026-02-17T05:04:36.743Z",
+      "id": "xwVrtx3P1xVx0rn7",
+      "name": "Faculdade"
+    }
+  ]
+}
