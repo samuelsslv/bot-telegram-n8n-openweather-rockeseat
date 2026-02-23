@@ -13,7 +13,7 @@
             },
             {
               "name": "appid",
-              "value": "63b0fad1f525a3bb9f3beffff4ef8fb1"
+              "value": "[OPENWEATHER_API_KEY]"
             },
             {
               "name": "units",
